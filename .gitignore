@@ -1,0 +1,27 @@
+# Environment variables with sensitive credentials
+variables.env
+
+# Data files
+*.csv
+*.7z
+
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

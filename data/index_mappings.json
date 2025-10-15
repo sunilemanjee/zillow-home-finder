@@ -1,0 +1,258 @@
+{
+  "properties": {
+    "property_id": {
+      "type": "keyword"
+    },
+    "address": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "ignore_above": 256
+        }
+      }
+    },
+    "city": {
+      "type": "keyword"
+    },
+    "state": {
+      "type": "keyword"
+    },
+    "streetAddress": {
+      "type": "text"
+    },
+    "zipcode": {
+      "type": "keyword"
+    },
+    "price": {
+      "type": "float"
+    },
+    "bedrooms": {
+      "type": "integer"
+    },
+    "bathrooms": {
+      "type": "float"
+    },
+    "sqft": {
+      "type": "integer"
+    },
+    "lot_size": {
+      "type": "float"
+    },
+    "property_type": {
+      "type": "keyword"
+    },
+    "listing_date": {
+      "type": "date"
+    },
+    "last_sold_date": {
+      "type": "date"
+    },
+    "last_sold_price": {
+      "type": "float"
+    },
+    "year_built": {
+      "type": "integer"
+    },
+    "heating": {
+      "type": "keyword"
+    },
+    "cooling": {
+      "type": "keyword"
+    },
+    "parking": {
+      "type": "keyword"
+    },
+    "hoa": {
+      "type": "float"
+    },
+    "description": {
+      "type": "text",
+      "copy_to": [
+        "description_elser",
+        "description_e5"
+      ]
+    },
+    "latitude": {
+      "type": "float"
+    },
+    "longitude": {
+      "type": "float"
+    },
+    "location": {
+      "type": "geo_point"
+    },
+    "zestimate": {
+      "type": "float"
+    },
+    "rent_zestimate": {
+      "type": "float"
+    },
+    "description_e5": {
+      "type": "semantic_text",
+      "inference_id": ".multilingual-e5-small-elasticsearch",
+      "model_settings": {
+        "task_type": "text_embedding",
+        "dimensions": 384,
+        "similarity": "cosine",
+        "element_type": "float"
+      },
+      "index_options": {
+        "dense_vector": {
+          "type": "flat"
+        }
+      }
+    },
+        "description_elser": {
+          "type": "semantic_text",
+          "inference_id": ".elser-2-elastic",
+          "model_settings": {
+            "task_type": "sparse_embedding"
+          }
+        },
+        "isListingClaimedByCurrentSignedInUser": {
+          "type": "boolean"
+        },
+        "isCurrentSignedInAgentResponsible": {
+          "type": "boolean"
+        },
+        "isCurrentSignedInUserVerifiedOwner": {
+          "type": "boolean"
+        },
+        "hasBadGeocode": {
+          "type": "boolean"
+        },
+        "isUndisclosedAddress": {
+          "type": "boolean"
+        },
+        "hideZestimate": {
+          "type": "boolean"
+        },
+        "isPremierBuilder": {
+          "type": "boolean"
+        },
+        "isZillowOwned": {
+          "type": "boolean"
+        },
+        "hasPublicVideo": {
+          "type": "boolean"
+        },
+        "hasApprovedThirdPartyVirtualTourUrl": {
+          "type": "boolean"
+        },
+        "isNonOwnerOccupied": {
+          "type": "boolean"
+        },
+        "isFeatured": {
+          "type": "boolean"
+        },
+        "isHousingConnector": {
+          "type": "boolean"
+        },
+        "isRentalsLeadCapMet": {
+          "type": "boolean"
+        },
+        "isOffMarket": {
+          "type": "boolean"
+        },
+        "is_showcased": {
+          "type": "boolean"
+        },
+        "is_listed_by_management_company": {
+          "type": "boolean"
+        },
+        "homeType": {
+          "type": "keyword"
+        },
+        "currency": {
+          "type": "keyword"
+        },
+        "country": {
+          "type": "keyword"
+        },
+        "lotAreaUnits": {
+          "type": "keyword"
+        },
+        "livingAreaUnitsShort": {
+          "type": "keyword"
+        },
+        "livingAreaUnits": {
+          "type": "keyword"
+        },
+        "listingDataSource": {
+          "type": "keyword"
+        },
+        "homeStatus": {
+          "type": "keyword"
+        },
+        "propertyTaxRate": {
+          "type": "float"
+        },
+        "photoCount": {
+          "type": "integer"
+        },
+        "tourViewCount": {
+          "type": "integer"
+        },
+        "taxAssessedValue": {
+          "type": "float"
+        },
+        "taxAssessedYear": {
+          "type": "integer"
+        },
+        "lastSoldPrice": {
+          "type": "float"
+        },
+        "zestimateMinus30": {
+          "type": "float"
+        },
+        "restimateMinus30": {
+          "type": "float"
+        },
+        "zestimateLowPercent": {
+          "type": "integer"
+        },
+        "zestimateHighPercent": {
+          "type": "integer"
+        },
+        "restimateLowPercent": {
+          "type": "integer"
+        },
+        "restimateHighPercent": {
+          "type": "integer"
+        },
+        "dateSoldString": {
+          "type": "date"
+        },
+        "photos": {
+          "type": "keyword"
+        },
+        "hoa_details": {
+          "type": "flattened"
+        },
+        "interior_full": {
+          "type": "flattened"
+        },
+        "property": {
+          "type": "flattened"
+        },
+        "construction": {
+          "type": "flattened"
+        },
+        "taxHistory": {
+          "type": "flattened"
+        },
+        "priceHistory": {
+          "type": "flattened"
+        },
+        "schools": {
+          "type": "flattened"
+        },
+        "interior": {
+          "type": "flattened"
+        },
+        "listing_provided_by": {
+          "type": "flattened"
+        }
+  }
+}

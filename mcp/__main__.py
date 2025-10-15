@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""
+Main entry point for the MCP Home Finder Server.
+"""
+
+import asyncio
+import logging
+import os
+import sys
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Add parent directory to path to import from data directory
+sys.path.append(str(Path(__file__).parent.parent))
+
+# Load environment variables
+env_path = Path(__file__).parent.parent / 'variables.env'
+load_dotenv(env_path)
+
+from mcp.server import FastMCP
+from mcp.types import Tool, TextContent
+
+from server import create_home_finder_server
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def main():
+    """Main entry point for the MCP server."""
+    try:
+        # Get server configuration from environment
+        host = os.getenv('MCP_HOST', 'localhost')
+        port = int(os.getenv('MCP_PORT', '8000'))
+        
+        logger.info(f"Starting MCP Home Finder Server on {host}:{port}...")
+        
+        # Create the FastMCP server instance
+        server = FastMCP(
+            name="home-finder",
+            host=host,
+            port=port,
+            streamable_http_path="/mcp"
+        )
+        
+        # Add the three tools to FastMCP
+        @server.tool()
+        async def parse_query(query: str) -> str:
+            """Parse natural language home search query to extract parameters."""
+            from server import parse_query_tool
+            from query_parser import QueryParser
+            
+            # Initialize query parser
+            query_parser = QueryParser(
+                llm_url=os.getenv('LLM_URL'),
+                llm_model=os.getenv('LLM_MODEL'),
+                llm_api_key=os.getenv('LLM_API_KEY')
+            )
+            
+            # Call the parse function
+            result = await parse_query_tool({"query": query}, query_parser)
+            return result[0].text if result else "Failed to parse query"
+        
+        @server.tool()
+        async def geocode_location(location: str) -> str:
+            """Convert a location name to latitude/longitude coordinates using Azure Maps."""
+            from server import geocode_location_tool
+            from geocoder import AzureMapsGeocoder
+            
+            # Initialize geocoder
+            geocoder = AzureMapsGeocoder(
+                subscription_key=os.getenv('AZURE_MAPS_SUBSCRIPTION_KEY')
+            )
+            
+            # Call the geocode function
+            result = await geocode_location_tool({"location": location}, geocoder)
+            return result[0].text if result else "Failed to geocode location"
+        
+        @server.tool()
+        async def search_homes(query: str, latitude: float = None, longitude: float = None, 
+                              distance: float = None, distance_unit: str = None, bedrooms: int = None, bathrooms: float = None,
+                              square_footage: int = None, home_price_min: float = None, 
+                              home_price_max: float = None, tax: float = None, 
+                              maintenance: float = None, feature: str = None) -> str:
+            """Search for homes in Elasticsearch with structured parameters."""
+            from server import search_homes_tool
+            from search_service import ElasticsearchSearchService
+            
+            # Initialize search service
+            search_service = ElasticsearchSearchService(
+                es_url=os.getenv('ELASTICSEARCH_URL'),
+                es_api_key=os.getenv('ELASTICSEARCH_API_KEY'),
+                index_name=os.getenv('INDEX_NAME'),
+                search_template_name=os.getenv('SEARCH_TEMPLATE_NAME')
+            )
+            
+            # Build search parameters
+            search_params = {"query": query}
+            if latitude is not None:
+                search_params["latitude"] = latitude
+            if longitude is not None:
+                search_params["longitude"] = longitude
+            if distance is not None:
+                search_params["distance"] = distance
+            if distance_unit is not None:
+                search_params["distance_unit"] = distance_unit
+            if bedrooms is not None:
+                search_params["bedrooms"] = bedrooms
+            if bathrooms is not None:
+                search_params["bathrooms"] = bathrooms
+            if square_footage is not None:
+                search_params["square_footage"] = square_footage
+            if home_price_min is not None:
+                search_params["home_price_min"] = home_price_min
+            if home_price_max is not None:
+                search_params["home_price_max"] = home_price_max
+            if tax is not None:
+                search_params["tax"] = tax
+            if maintenance is not None:
+                search_params["maintenance"] = maintenance
+            if feature is not None:
+                search_params["feature"] = feature
+            
+            # Call the search function
+            result = await search_homes_tool(search_params, search_service)
+            return result[0].text if result else "No results found"
+        
+        logger.info(f"MCP server is running at http://{host}:{port}/mcp")
+        
+        # Run the server with streamable HTTP transport
+        server.run(transport='streamable-http')
+            
+    except KeyboardInterrupt:
+        logger.info("Server stopped by user")
+    except Exception as e:
+        logger.error(f"Server error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

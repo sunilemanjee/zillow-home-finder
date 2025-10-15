@@ -1,0 +1,96 @@
+{
+    "_source": false,
+    "size": 5,
+    "fields": ["address", "taxAssessedValue", "hoa_details.hoa_fee_value", "bathrooms", "bedrooms", "sqft", "price", "property.features", "interior_full.features", "url", "photos[0]"],
+    "retriever": {
+        "standard": {
+            "query": {
+                "match": {
+                   "description_elser": "{{query}}"
+                }
+            },
+            "filter": {
+                "bool": {
+                    "must": [
+                        {{#distance}}{
+                            "geo_distance": {
+                                "distance": "{{distance}}",
+                                "location": {
+                                    "lat": {{latitude}},
+                                    "lon": {{longitude}}
+                                }
+                            }
+                        }{{/distance}}
+                        {{#bedrooms}}{{#distance}},{{/distance}}{
+                            "range": {
+                                "bedrooms": {
+                                    "gte": {{bedrooms}}
+                                }
+                            }
+                        }{{/bedrooms}}
+                        {{#bathrooms}}{{#distance}}{{^bedrooms}},{{/bedrooms}}{{/distance}}{{#bedrooms}},{{/bedrooms}}{
+                            "range": {
+                                "bathrooms": {
+                                    "gte": {{bathrooms}}
+                                }
+                            }
+                        }{{/bathrooms}}
+                        {{#tax}}{{#distance}}{{^bedrooms}}{{^bathrooms}},{{/bathrooms}}{{/bedrooms}}{{/distance}}{{#bedrooms}}{{^bathrooms}},{{/bathrooms}}{{/bedrooms}}{{#bathrooms}},{{/bathrooms}}{
+                            "range": {
+                                "taxAssessedValue": {
+                                    "lte": {{tax}}
+                                }
+                            }
+                        }{{/tax}}
+                        {{#maintenance}}{{#distance}}{{^bedrooms}}{{^bathrooms}}{{^tax}},{{/tax}}{{/bathrooms}}{{/bedrooms}}{{/distance}}{{#bedrooms}}{{^bathrooms}}{{^tax}},{{/tax}}{{/bathrooms}}{{/bedrooms}}{{#bathrooms}}{{^tax}},{{/tax}}{{/bathrooms}}{{#tax}},{{/tax}}{
+                            "range": {
+                                "hoa_details.hoa_fee_value": {
+                                    "gte": 0,
+                                    "lte": {{maintenance}}
+                                }
+                            }
+                        }{{/maintenance}}
+                        {{#square_footage}}{{#distance}}{{^bedrooms}}{{^bathrooms}}{{^tax}}{{^maintenance}},{{/maintenance}}{{/tax}}{{/bathrooms}}{{/bedrooms}}{{/distance}}{{#bedrooms}}{{^bathrooms}}{{^tax}}{{^maintenance}},{{/maintenance}}{{/tax}}{{/bathrooms}}{{/bedrooms}}{{#bathrooms}}{{^tax}}{{^maintenance}},{{/maintenance}}{{/tax}}{{/bathrooms}}{{#tax}}{{^maintenance}},{{/maintenance}}{{/tax}}{{#maintenance}},{{/maintenance}}{
+                            "range": {
+                                "sqft": {
+                                    "gte": {{square_footage}}
+                                }
+                            }
+                        }{{/square_footage}}
+                        {{#home_price_max}}{{#distance}}{{^bedrooms}}{{^bathrooms}}{{^tax}}{{^maintenance}}{{^square_footage}},{{/square_footage}}{{/maintenance}}{{/tax}}{{/bathrooms}}{{/bedrooms}}{{/distance}}{{#bedrooms}}{{^bathrooms}}{{^tax}}{{^maintenance}}{{^square_footage}},{{/square_footage}}{{/maintenance}}{{/tax}}{{/bathrooms}}{{/bedrooms}}{{#bathrooms}}{{^tax}}{{^maintenance}}{{^square_footage}},{{/square_footage}}{{/maintenance}}{{/tax}}{{/bathrooms}}{{#tax}}{{^maintenance}}{{^square_footage}},{{/square_footage}}{{/maintenance}}{{/tax}}{{#maintenance}}{{^square_footage}},{{/square_footage}}{{/maintenance}}{{#square_footage}},{{/square_footage}}{
+                            "range": {
+                                "price": {
+                                    "gte": {{#home_price_min}}{{home_price_min}}{{/home_price_min}}{{^home_price_min}}0{{/home_price_min}},
+                                    "lte": {{home_price_max}}
+                                }
+                            }
+                        }{{/home_price_max}}
+                        {{#feature}}{{#distance}}{{^bedrooms}}{{^bathrooms}}{{^tax}}{{^maintenance}}{{^square_footage_max}}{{^home_price_max}},{{/home_price_max}}{{/square_footage_max}}{{/maintenance}}{{/tax}}{{/bathrooms}}{{/bedrooms}}{{/distance}}{{#bedrooms}}{{^bathrooms}}{{^tax}}{{^maintenance}}{{^square_footage_max}}{{^home_price_max}},{{/home_price_max}}{{/square_footage_max}}{{/maintenance}}{{/tax}}{{/bathrooms}}{{/bedrooms}}{{#bathrooms}}{{^tax}}{{^maintenance}}{{^square_footage_max}}{{^home_price_max}},{{/home_price_max}}{{/square_footage_max}}{{/maintenance}}{{/tax}}{{/bathrooms}}{{#tax}}{{^maintenance}}{{^square_footage_max}}{{^home_price_max}},{{/home_price_max}}{{/square_footage_max}}{{/maintenance}}{{/tax}}{{#maintenance}}{{^square_footage_max}}{{^home_price_max}},{{/home_price_max}}{{/square_footage_max}}{{/maintenance}}{{#square_footage_max}}{{^home_price_max}},{{/home_price_max}}{{/square_footage_max}}{{#home_price_max}},{{/home_price_max}}{
+                            "bool": {
+                                "should": [
+                                    {
+                                        "match": {
+                                            "property.features": {
+                                                "query": "{{feature}}",
+                                                "operator": "or"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "match": {
+                                            "interior_full.features": {
+                                                "query": "{{feature}}",
+                                                "operator": "or"
+                                            }
+                                        }
+                                    }
+                                ],
+                                "minimum_should_match": 1
+                            }
+                        }{{/feature}}
+                    ]
+                }
+            }
+        }
+    }
+} 

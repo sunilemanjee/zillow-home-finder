@@ -1,0 +1,13 @@
+{
+  "index": {
+    "analysis": {
+      "analyzer": {
+        "address_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "stop"]
+        }
+      }
+    }
+  }
+}
