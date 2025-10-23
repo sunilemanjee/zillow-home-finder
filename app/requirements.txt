@@ -6,3 +6,9 @@ pydantic==2.12.2
 typing-extensions>=4.0.0
 elasticsearch==9.1.1
 mcp
+elastic-opentelemetry
+opentelemetry-instrumentation-openai
+opentelemetry-instrumentation-elasticsearch
+opentelemetry-instrumentation-aiohttp-client
+opentelemetry-instrumentation-asyncio
+opentelemetry-instrumentation-httpx

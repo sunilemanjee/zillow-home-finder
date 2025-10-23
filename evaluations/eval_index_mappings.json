@@ -1,0 +1,110 @@
+{
+  "mappings": {
+    "properties": {
+      "query": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "parsed_params": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "keyword"},
+          "distance": {"type": "float"},
+          "distance_unit": {"type": "keyword"},
+          "latitude": {"type": "float"},
+          "longitude": {"type": "float"},
+          "bedrooms": {"type": "float"},
+          "bathrooms": {"type": "float"},
+          "square_footage": {"type": "float"},
+          "home_price_min": {"type": "float"},
+          "home_price_max": {"type": "float"},
+          "tax": {"type": "float"},
+          "maintenance": {"type": "float"},
+          "feature": {"type": "keyword"}
+        }
+      },
+      "response": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "relevance_score": {
+        "type": "float"
+      },
+      "groundedness_score": {
+        "type": "float"
+      },
+      "f1_score": {
+        "type": "float"
+      },
+      "coherence_score": {
+        "type": "float"
+      },
+      "evaluation_metadata": {
+        "type": "object",
+        "properties": {
+          "evaluator_version": {"type": "keyword"},
+          "evaluation_time_ms": {"type": "float"},
+          "azure_sdk_version": {"type": "keyword"},
+          "model_used": {"type": "keyword"}
+        }
+      },
+      "trace_id": {
+        "type": "keyword"
+      },
+      "span_id": {
+        "type": "keyword"
+      },
+      "timestamp": {
+        "type": "date"
+      },
+      "evaluation_scores": {
+        "type": "object",
+        "properties": {
+          "overall_score": {"type": "float"},
+          "relevance_score": {"type": "float"},
+          "groundedness_score": {"type": "float"},
+          "f1_score": {"type": "float"},
+          "coherence_score": {"type": "float"}
+        }
+      },
+      "issues": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "evaluator_results": {
+        "type": "object",
+        "properties": {
+          "relevance": {
+            "type": "object",
+            "properties": {
+              "gpt_relevance": {"type": "float"},
+              "relevance_reason": {"type": "text"}
+            }
+          },
+          "groundedness": {
+            "type": "object",
+            "properties": {
+              "gpt_groundedness": {"type": "float"},
+              "groundedness_reason": {"type": "text"}
+            }
+          },
+          "f1_score": {
+            "type": "object",
+            "properties": {
+              "f1_score": {"type": "float"}
+            }
+          }
+        }
+      }
+    }
+  },
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "standard": {
+          "type": "standard"
+        }
+      }
+    }
+  }
+}

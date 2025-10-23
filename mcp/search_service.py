@@ -3,11 +3,18 @@ Elasticsearch search service for executing home searches using search templates.
 """
 
 import logging
+import time
 from typing import Dict, Any, List, Optional
 from elasticsearch import Elasticsearch
 from dataclasses import dataclass
 
+# OpenTelemetry imports
+from opentelemetry import trace
+
 logger = logging.getLogger(__name__)
+
+# Get tracer from the global context
+tracer = trace.get_tracer(__name__)
 
 @dataclass
 class SearchResult:
@@ -59,54 +66,93 @@ class ElasticsearchSearchService:
         Returns:
             List of SearchResult objects
         """
-        try:
-            # Filter out None values from search parameters
-            filtered_params = {k: v for k, v in search_params.items() if v is not None}
+        # Create span for search execution
+        with tracer.start_as_current_span("search_service.search_homes") as span:
+            span.set_attribute("search_service.index_name", self.index_name)
+            span.set_attribute("search_service.template_name", self.search_template_name)
+            span.set_attribute("search_service.search_params", str(search_params)[:1000])  # Truncate long params
+            span.set_attribute("search_service.search_params_count", len(search_params))
             
-            # Format distance parameter for Elasticsearch (convert to "Xmi" or "Xkm" format)
-            if 'distance' in filtered_params and isinstance(filtered_params['distance'], (int, float)):
-                distance_value = filtered_params['distance']
-                # Check if distance_unit is specified, default to miles
-                distance_unit = filtered_params.get('distance_unit', 'mi')
-                if distance_unit not in ['mi', 'km', 'miles', 'kilometers']:
-                    distance_unit = 'mi'  # Default to miles if invalid unit
-                elif distance_unit in ['miles', 'kilometers']:
-                    distance_unit = 'mi' if distance_unit == 'miles' else 'km'
+            start_time = time.time()
+            
+            try:
+                # Filter out None values from search parameters
+                filtered_params = {k: v for k, v in search_params.items() if v is not None}
                 
-                filtered_params['distance'] = f"{distance_value}{distance_unit}"
-                # Remove distance_unit from params as it's not needed by Elasticsearch
-                filtered_params.pop('distance_unit', None)
-                logger.info(f"Formatted distance parameter: {distance_value} {distance_unit} -> {filtered_params['distance']}")
-            
-            logger.info(f"Searching homes with parameters: {filtered_params}")
-            
-            # Execute search using the template
-            response = self.es.search_template(
-                index=self.index_name,
-                id=self.search_template_name,
-                params=filtered_params
-            )
-            
-            # Parse results
-            hits = response.get('hits', {}).get('hits', [])
-            results = []
-            
-            logger.info(f"Processing {len(hits)} search hits")
-            for hit in hits:
-                try:
-                    result = self._parse_search_hit(hit)
-                    if result:
-                        results.append(result)
-                except Exception as e:
-                    logger.warning(f"Failed to parse search hit: {e}")
-                    continue
-            
-            logger.info(f"Found {len(results)} home search results")
-            return results
-            
-        except Exception as e:
-            logger.error(f"Error during home search: {e}")
-            return []
+                # Format distance parameter for Elasticsearch (convert to "Xmi" or "Xkm" format)
+                if 'distance' in filtered_params and isinstance(filtered_params['distance'], (int, float)):
+                    distance_value = filtered_params['distance']
+                    # Check if distance_unit is specified, default to miles
+                    distance_unit = filtered_params.get('distance_unit', 'mi')
+                    if distance_unit not in ['mi', 'km', 'miles', 'kilometers']:
+                        distance_unit = 'mi'  # Default to miles if invalid unit
+                    elif distance_unit in ['miles', 'kilometers']:
+                        distance_unit = 'mi' if distance_unit == 'miles' else 'km'
+                    
+                    filtered_params['distance'] = f"{distance_value}{distance_unit}"
+                    # Remove distance_unit from params as it's not needed by Elasticsearch
+                    filtered_params.pop('distance_unit', None)
+                    logger.info(f"Formatted distance parameter: {distance_value} {distance_unit} -> {filtered_params['distance']}")
+                    span.set_attribute("search_service.distance_formatted", filtered_params['distance'])
+                
+                span.set_attribute("search_service.filtered_params_count", len(filtered_params))
+                span.set_attribute("search_service.filtered_params", str(filtered_params)[:1000])  # Truncate long params
+                
+                logger.info(f"Searching homes with parameters: {filtered_params}")
+                
+                # Execute search using the template
+                response = self.es.search_template(
+                    index=self.index_name,
+                    id=self.search_template_name,
+                    params=filtered_params
+                )
+                
+                # Record Elasticsearch response metadata
+                total_hits = response.get('hits', {}).get('total', {})
+                if isinstance(total_hits, dict):
+                    total_count = total_hits.get('value', 0)
+                else:
+                    total_count = total_hits
+                
+                span.set_attribute("search_service.es_total_hits", total_count)
+                span.set_attribute("search_service.es_took_ms", response.get('took', 0))
+                
+                # Parse results
+                hits = response.get('hits', {}).get('hits', [])
+                results = []
+                
+                logger.info(f"Processing {len(hits)} search hits")
+                span.set_attribute("search_service.hits_to_process", len(hits))
+                
+                for hit in hits:
+                    try:
+                        result = self._parse_search_hit(hit)
+                        if result:
+                            results.append(result)
+                    except Exception as e:
+                        logger.warning(f"Failed to parse search hit: {e}")
+                        span.add_event("search_hit_parse_error", {"error": str(e)})
+                        continue
+                
+                logger.info(f"Found {len(results)} home search results")
+                
+                # Record search results
+                span.set_attribute("search_service.success", True)
+                span.set_attribute("search_service.results_count", len(results))
+                span.set_attribute("search_service.results_parsed", len(results))
+                
+                # Record execution time
+                execution_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+                span.set_attribute("search_service.execution_time_ms", execution_time)
+                
+                return results
+                
+            except Exception as e:
+                logger.error(f"Error during home search: {e}")
+                span.record_exception(e)
+                span.set_attribute("search_service.success", False)
+                span.set_attribute("search_service.error", str(e))
+                return []
     
     def _parse_search_hit(self, hit: Dict[str, Any]) -> Optional[SearchResult]:
         """

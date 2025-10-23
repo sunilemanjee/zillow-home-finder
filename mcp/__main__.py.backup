@@ -19,7 +19,6 @@ load_dotenv(env_path)
 
 from mcp.server import FastMCP
 from mcp.types import Tool, TextContent
-from elasticsearch import Elasticsearch
 
 # Import server module to initialize OpenTelemetry
 from server import create_home_finder_server
@@ -56,7 +55,7 @@ def main():
         # Add the three tools to FastMCP
         @server.tool()
         async def parse_query(query: str) -> str:
-            """FIRST STEP: Parse natural language home search query to extract parameters like bedrooms, bathrooms, price, location names, distance, etc. IMPORTANT: This tool extracts location NAMES (like 'Orlando FL', 'Miami Beach') but NOT coordinates. If a location is detected in the query, you MUST call the geocode_location tool next to get the latitude/longitude coordinates before calling search_homes."""
+            """Parse natural language home search query to extract parameters."""
             from server import parse_query_tool
             from query_parser import QueryParser
             
@@ -73,7 +72,7 @@ def main():
         
         @server.tool()
         async def geocode_location(location: str) -> str:
-            """SECOND STEP: Convert a location name to latitude/longitude coordinates using Azure Maps. This tool MUST be called whenever parse_query returns a 'location' field in its output. The workflow is: 1) parse_query extracts location names, 2) geocode_location converts them to coordinates, 3) search_homes uses those coordinates for distance-based searches. Do NOT skip this step if you need to search within a distance of a location."""
+            """Convert a location name to latitude/longitude coordinates using Azure Maps."""
             from server import geocode_location_tool
             from geocoder import AzureMapsGeocoder
             
@@ -92,7 +91,7 @@ def main():
                               square_footage: int = None, home_price_min: float = None, 
                               home_price_max: float = None, tax: float = None, 
                               maintenance: float = None, feature: str = None) -> str:
-            """THIRD STEP: Search for homes in Elasticsearch with structured parameters. Always include the original query text for semantic search. IMPORTANT: For distance-based searches (when 'distance' parameter is provided), you MUST provide latitude and longitude coordinates. These coordinates should come from the geocode_location tool - do NOT call this tool without coordinates if you need to search within a distance of a location."""
+            """Search for homes in Elasticsearch with structured parameters."""
             from server import search_homes_tool
             from search_service import ElasticsearchSearchService
             
@@ -131,20 +130,39 @@ def main():
             if feature is not None:
                 search_params["feature"] = feature
             
-            # Query evaluation moved to offline processing
-            # Initialize Elasticsearch client for source index storage
-            es_client = Elasticsearch(
-                hosts=[os.getenv('ELASTICSEARCH_O11Y_URL')],
-                api_key=os.getenv('ELASTICSEARCH_O11Y_API_KEY'),
-                verify_certs=True
-            )
-            
             # Call the search function
-            result = await search_homes_tool(search_params, search_service, es_client)
+            result = await search_homes_tool(search_params, search_service)
             return result[0].text if result else "No results found"
         
-        # Evaluation moved to offline processing
-        logger.info("Query evaluation is now handled offline - no real-time evaluation tools")
+        # Add evaluation tool if enabled
+        enable_eval = os.getenv('ENABLE_QUERY_EVAL', 'false').lower() == 'true'
+        if enable_eval:
+            logger.info("Query evaluation is enabled - adding evaluate_query_parse tool")
+            
+            @server.tool()
+            async def evaluate_query_parse(query: str, parsed_params: dict) -> str:
+                """**REQUIRED**: This tool MUST be called immediately after every 'parse_query' call to evaluate the quality of query parsing. It validates extracted parameters against the search template schema, checks parameter types and ranges, and provides comprehensive scoring metrics. Results are automatically logged to Elasticsearch for monitoring and analysis. Use this tool to ensure query parsing accuracy and identify potential issues with parameter extraction."""
+                from server import evaluate_query_parse_tool
+                from query_evaluator import QueryParserEvaluator
+                
+                # Initialize query evaluator
+                query_evaluator = QueryParserEvaluator(
+                    es_url=os.getenv('ELASTICSEARCH_O11Y_URL'),
+                    es_api_key=os.getenv('ELASTICSEARCH_O11Y_API_KEY'),
+                    eval_index_name=os.getenv('EVAL_INDEX_NAME'),
+                    llm_url=os.getenv('LLM_URL'),
+                    llm_model=os.getenv('LLM_MODEL'),
+                    llm_api_key=os.getenv('LLM_API_KEY')
+                )
+                
+                # Call the evaluation function
+                result = await evaluate_query_parse_tool({
+                    "query": query,
+                    "parsed_params": parsed_params
+                }, query_evaluator)
+                return result[0].text if result else "Failed to evaluate query parsing"
+        else:
+            logger.info("Query evaluation is disabled")
         
         logger.info(f"MCP server is running at http://{host}:{port}/mcp")
         

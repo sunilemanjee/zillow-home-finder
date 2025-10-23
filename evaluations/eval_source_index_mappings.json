@@ -1,0 +1,59 @@
+{
+  "mappings": {
+    "properties": {
+      "query": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "parsed_params": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "keyword"},
+          "distance": {"type": "float"},
+          "distance_unit": {"type": "keyword"},
+          "latitude": {"type": "float"},
+          "longitude": {"type": "float"},
+          "bedrooms": {"type": "float"},
+          "bathrooms": {"type": "float"},
+          "square_footage": {"type": "float"},
+          "home_price_min": {"type": "float"},
+          "home_price_max": {"type": "float"},
+          "tax": {"type": "float"},
+          "maintenance": {"type": "float"},
+          "feature": {"type": "keyword"}
+        }
+      },
+      "timestamp": {
+        "type": "date"
+      },
+      "trace_id": {
+        "type": "keyword"
+      },
+      "span_id": {
+        "type": "keyword"
+      },
+      "session_id": {
+        "type": "keyword"
+      },
+      "evaluated": {
+        "type": "boolean"
+      },
+      "conversation_history": {
+        "type": "nested",
+        "properties": {
+          "role": {"type": "keyword"},
+          "content": {"type": "text", "analyzer": "standard"}
+        }
+      }
+    }
+  },
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "standard": {
+          "type": "standard"
+        }
+      }
+    }
+  }
+}
